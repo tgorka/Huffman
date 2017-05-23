@@ -81,6 +81,7 @@ int main() {
 
     printf("Tworzenie drzewa\n");
     TDrzewo *tdrzewo = stworzTDrzewo(stat);
+    free(stat);
 
 
     printf("Rozpoczecie kompresji\n");
