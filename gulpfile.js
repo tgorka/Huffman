@@ -23,7 +23,7 @@ gulp.task("clean",function(){
         .pipe(clean());
 });
 
-gulp.task("watch", function() {
+gulp.task("watch", ["test"], function() {
     gulp.watch("src/*.c", ["build"]);
     gulp.watch("include/*.h", ["build"]);
 });
