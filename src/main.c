@@ -19,8 +19,16 @@ struct TDrzewo {
  * Zebranie statystyk wystepowania znakow w posortowanej tablicy niepowtarzalnych znakow
  */
 int* statystyki(FILE *statFile) {
-  /* instrukcje */
-  return NULL;
+    // przydziel pamiec do tablicy wszystkich mozliwych znakow z wartoscia domyslna 0
+    int *wezel = (int*) calloc(128, sizeof(int));
+
+    int c;
+    while ((c = getc(statFile)) != EOF) {
+        if (c >= 0 && c < 128) { // wspieraj tylko normalne znaki z zakresu ASCI
+            wezel[c] += 1;
+        }
+    }
+    return wezel;
 }
 
 /**
@@ -62,6 +70,13 @@ int main() {
     int *stat = statystyki(statFile);
 
     fclose(statFile);
+    printf("Zebrane statystyki:");
+    for (int i = 0; i < 128; i++) {
+        if (stat[i] > 0) {
+            printf("[%c]x%d ", i, stat[i]);
+        }
+    }
+    printf("\n");
 
 
     printf("Tworzenie drzewa\n");
