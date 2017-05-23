@@ -1,0 +1,23 @@
+{
+  "name": "Huffman",
+  "version": "1.0.0",
+  "description": "algorytm kompresji/dekompresji Huffmana",
+  "main": "gulpfile.js",
+  "repository": "https://github.com/tgorka/Huffman.git",
+  "scripts": {
+    "test": "node ./node_modules/.bin/gulp test",
+    "start": "node ./node_modules/.bin/gulp",
+    "clean": "node ./node_modules/.bin/gulp clean"
+  },
+  "engines": {
+    "node": ">=7"
+  },
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "child_process": "^1.0.2",
+    "gulp": "^3.9.1",
+    "gulp-clean": "^0.3.2",
+    "yarn": "^0.24.5"
+  }
+}
