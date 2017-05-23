@@ -140,6 +140,8 @@ fabric.properties
 *.exe
 *.out
 *.app
+*.bin
+*_out.txt
 
 ### Windows template
 # Windows thumbnail cache files
