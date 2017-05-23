@@ -54,6 +54,10 @@ int main() {
 
     printf("Zbieranie statystyk\n");
     FILE *statFile = fopen("test/podstawowy.txt", "r");
+    if (!statFile) {
+        printf("Problem z plikiem statystyk\n");
+        return 1;
+    }
 
     int *stat = statystyki(statFile);
 
@@ -67,6 +71,10 @@ int main() {
     printf("Rozpoczecie kompresji\n");
     FILE *inputCompressionFile = fopen("test/podstawowy.txt", "r");
     FILE *outputCompressionFile = fopen("podstawowy.bin", "wb");
+    if (!inputCompressionFile || !outputCompressionFile) {
+        printf("Problem z plikiem  in/out podczas kompresji\n");
+        return 1;
+    }
 
     kompresuj(tdrzewo, inputCompressionFile, outputCompressionFile);
 
@@ -77,6 +85,10 @@ int main() {
     printf("Rozpoczecie dekompresji\n");
     FILE *inputDecompressionFile = fopen("podstawowy.bin", "rb");
     FILE *outputDecompressionFile = fopen("podstawowy_out.txt", "w");
+    if (!inputDecompressionFile || !outputDecompressionFile) {
+        printf("Problem z plikiem  in/out podczas dekompresji\n");
+        return 1;
+    }
 
     dekompresuj(tdrzewo, inputDecompressionFile, outputDecompressionFile);
 
