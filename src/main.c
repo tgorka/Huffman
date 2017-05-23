@@ -81,7 +81,7 @@ int main() {
 
     printf("Tworzenie drzewa\n");
     TDrzewo *tdrzewo = stworzTDrzewo(stat);
-    free(stat);
+    free(stat); // nie potrzeba juz statystyk
 
 
     printf("Rozpoczecie kompresji\n");
@@ -111,7 +111,9 @@ int main() {
     fclose(inputDecompressionFile);
     fclose(outputDecompressionFile);
 
-
+    if (tdrzewo) {
+        free(tdrzewo); // nie potrzeba juz drzewa
+    }
     printf("Zakonczenie dzialania.\n");
     return 0;
 }
