@@ -9,7 +9,7 @@
 typedef struct TDrzewo TDrzewo;
 struct TDrzewo {
     char slowo;
-    int waga;
+    int wystapienia;
     //Do poruszania się kompresji/dekompresji
     TDrzewo *lewy;
     TDrzewo *prawy;
@@ -20,37 +20,47 @@ struct TDrzewo {
  */
 int* statystyki(FILE *statFile) {
     // przydziel pamiec do tablicy wszystkich mozliwych znakow z wartoscia domyslna 0
-    int *wezel = (int*) calloc(128, sizeof(int));
-
+    int *stat = (int*) calloc(128, sizeof(int));
     int c;
     while ((c = getc(statFile)) != EOF) {
         if (c >= 0 && c < 128) { // wspieraj tylko normalne znaki z zakresu ASCI
-            wezel[c] += 1;
+            stat[c] += 1;
         }
     }
-    return wezel;
+    return stat;
 }
 
 /**
  * Stworzenie drzewa wystapien uzywanego pozniej do kompresji/dekompresji na podstawie podanych statystyk
  */
-TDrzewo* stworzTDrzewo(int* statystyki) {
-  /* instrukcje */
-  return NULL;
+TDrzewo* stworzTDrzewo(int* stat) {
+    TDrzewo *root = malloc(sizeof(TDrzewo));
+    root->slowo = 'a';
+    for (int i = 0; i < 128; i++) {
+        if (stat[i] > 0) {
+
+            //wezel->wystapienia = stat[i];
+            //wezel->slowo = i;
+
+            printf("[%c]x%d ", i, stat[i]);
+        }
+    }
+    /* instrukcje */
+    return root;
 }
 
 /**
  * Kompresuj ciag wejsciowy do binarnego wyjsciowego.
  */
 void kompresuj(TDrzewo *tdrzewo, FILE *in, FILE *out) {
-  /* instrukcje */
+    /* instrukcje */
 }
 
 /**
  * Dekompresuj binarny ciag wejsciowy do ciagu wyjsciowego.
  */
 void dekompresuj(TDrzewo *tdrzewo, FILE *in, FILE *out) {
-  /* instrukcje */
+    /* instrukcje */
 }
 
 /**
@@ -81,7 +91,7 @@ int main() {
 
     printf("Tworzenie drzewa\n");
     TDrzewo *tdrzewo = stworzTDrzewo(stat);
-    free(stat); // nie potrzeba juz statystyk
+    free(stat);
 
 
     printf("Rozpoczecie kompresji\n");
@@ -111,9 +121,7 @@ int main() {
     fclose(inputDecompressionFile);
     fclose(outputDecompressionFile);
 
-    if (tdrzewo) {
-        free(tdrzewo); // nie potrzeba juz drzewa
-    }
+    free(stat); // uwolnij pamiec
     printf("Zakonczenie dzialania.\n");
     return 0;
 }
