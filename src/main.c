@@ -30,22 +30,48 @@ int* statystyki(FILE *statFile) {
     return stat;
 }
 
+void zaalokujTDrzewo(int* stat, int i, TDrzewo *root) {
+    if (i >= 128) {
+        return;
+    }
+
+    TDrzewo *wezel = malloc(sizeof(TDrzewo));
+    wezel->wystapienia = stat[i];
+    wezel->slowo = i;
+    wezel->prawy = NULL;
+    wezel->lewy = NULL;
+
+    TDrzewo *galaz = malloc(sizeof(TDrzewo));
+    galaz->wystapienia = 0;
+    galaz->slowo = -1;
+    galaz->prawy = NULL;
+    galaz->lewy = NULL;
+
+    root->prawy = wezel;
+    root->lewy = galaz;
+    zaalokujTDrzewo(stat, i + 1, galaz);
+}
+
+void uwolnijTDrzewo(TDrzewo *root) {
+    if (!root) {
+        return;
+    }
+    uwolnijTDrzewo(root->lewy);
+    uwolnijTDrzewo(root->prawy);
+    free(root);
+}
+
 /**
  * Stworzenie drzewa wystapien uzywanego pozniej do kompresji/dekompresji na podstawie podanych statystyk
  */
 TDrzewo* stworzTDrzewo(int* stat) {
     TDrzewo *root = malloc(sizeof(TDrzewo));
-    root->slowo = 'a';
-    for (int i = 0; i < 128; i++) {
-        if (stat[i] > 0) {
+    root->wystapienia = 0;
+    root->slowo = -1;
+    root->prawy = NULL;
+    root->lewy = NULL;
 
-            //wezel->wystapienia = stat[i];
-            //wezel->slowo = i;
-
-            printf("[%c]x%d ", i, stat[i]);
-        }
-    }
-    /* instrukcje */
+    zaalokujTDrzewo(stat, 0, root);
     return root;
 }
 
@@ -121,7 +147,7 @@ int main() {
     fclose(inputDecompressionFile);
     fclose(outputDecompressionFile);
 
-    free(stat); // uwolnij pamiec
+    uwolnijTDrzewo(tdrzewo); // uwolnij pamiec
     printf("Zakonczenie dzialania.\n");
     return 0;
 }
