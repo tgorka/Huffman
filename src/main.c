@@ -98,11 +98,26 @@ void kompresuj(TDrzewo *tdrzewo, FILE *in, FILE *out) {
     }
 }
 
+TDrzewo* readByte(TDrzewo *root, TDrzewo *aktualnyWezel, FILE *out, int c) {
+    if ('1' == c) {
+        // write slowo
+        fputc(aktualnyWezel->prawy->slowo, out);
+    } else if (root->lewy) {
+        // write next
+        return aktualnyWezel->lewy;
+    }
+    return root;
+}
+
 /**
  * Dekompresuj binarny ciag wejsciowy do ciagu wyjsciowego.
  */
 void dekompresuj(TDrzewo *tdrzewo, FILE *in, FILE *out) {
-    /* instrukcje */
+    int c;
+    TDrzewo *aktualnyWezel = tdrzewo;
+    while ((c = getc(in)) != EOF) {
+        aktualnyWezel = readByte(tdrzewo, aktualnyWezel, out, c);
+    }
 }
 
 /**
@@ -138,7 +153,7 @@ int main() {
 
     printf("Rozpoczecie kompresji\n");
     FILE *inputCompressionFile = fopen("test/podstawowy.txt", "r");
-    FILE *outputCompressionFile = fopen("podstawowy.bin", "wb");
+    FILE *outputCompressionFile = fopen("podstawowy.bin", "w");
     if (!inputCompressionFile || !outputCompressionFile) {
         printf("Problem z plikiem  in/out podczas kompresji\n");
         return 1;
@@ -151,7 +166,7 @@ int main() {
 
 
     printf("Rozpoczecie dekompresji\n");
-    FILE *inputDecompressionFile = fopen("podstawowy.bin", "rb");
+    FILE *inputDecompressionFile = fopen("podstawowy.bin", "r");
     FILE *outputDecompressionFile = fopen("podstawowy_out.txt", "w");
     if (!inputDecompressionFile || !outputDecompressionFile) {
         printf("Problem z plikiem  in/out podczas dekompresji\n");
