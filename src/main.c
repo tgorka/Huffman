@@ -75,11 +75,27 @@ TDrzewo* stworzTDrzewo(int* stat) {
     return root;
 }
 
+void writeByte(TDrzewo *root, FILE *out, int c) {
+    if (root->prawy && root->prawy->slowo == c) {
+        // write 1
+        fputc('1', out);
+    } else if (root->lewy) {
+        // write 0
+        fputc('0', out);
+        writeByte(root->lewy, out, c);
+    }
+}
+
 /**
  * Kompresuj ciag wejsciowy do binarnego wyjsciowego.
  */
 void kompresuj(TDrzewo *tdrzewo, FILE *in, FILE *out) {
-    /* instrukcje */
+    int c;
+    while ((c = getc(in)) != EOF) {
+        if (c >= 0 && c < 128) { // wspieraj tylko normalne znaki z zakresu ASCI
+            writeByte(tdrzewo, out, c);
+        }
+    }
 }
 
 /**
