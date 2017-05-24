@@ -3,7 +3,7 @@
 #include <string.h>
 #include <math.h>
 
-const int DEBUG = 1;
+const int DEBUG = 0;
 
 /**
  * Struktura do drzewa Huffmana.
@@ -32,22 +32,40 @@ int* statystyki(FILE *statFile) {
     return stat;
 }
 
-void zaalokujTDrzewo(int* stat, int i, TDrzewo *root) {
-    if (i >= 128) {
-        return;
-    } else if (stat[i] == 0) { // don't allocate one that are not exists
-        zaalokujTDrzewo(stat, i + 1, root);
+int cmpfunc (const void *a, const void *b) {
+   return ( ((TDrzewo*)b)->wystapienia - ((TDrzewo*)a)->wystapienia );
+}
+
+TDrzewo* posortowaneWezly(int *stat, int *size) {
+    *size = 0;
+    for(int i = 0; i < 128; i++) {
+        if (stat[i] > 0) {
+            *size = *size+1;
+        }
+    }
+    TDrzewo *res = (TDrzewo*) calloc(*size, sizeof(TDrzewo));
+
+    int j = 0;
+    for(int i = 0; i < 128; i++) {
+        if (stat[i] > 0) {
+            res[j].wystapienia = stat[i];
+            res[j].slowo = i;
+            res[j].prawy = NULL;
+            res[j].lewy = NULL;
+            j++;
+        }
+    }
+    qsort(res, *size, sizeof(TDrzewo), cmpfunc);
+    return res;
+}
+
+void zaalokujTDrzewo(TDrzewo* stat, int statSize, int i, TDrzewo *root) {
+    if (i >= statSize) {
         return;
     }
-
     if (DEBUG) {
         printf("allocating for word [%c]\n", i);
     }
-    TDrzewo *wezel = malloc(sizeof(TDrzewo));
-    wezel->wystapienia = stat[i];
-    wezel->slowo = i;
-    wezel->prawy = NULL;
-    wezel->lewy = NULL;
 
     TDrzewo *galaz = malloc(sizeof(TDrzewo));
     galaz->wystapienia = 0;
@@ -55,9 +73,9 @@ void zaalokujTDrzewo(int* stat, int i, TDrzewo *root) {
     galaz->prawy = NULL;
     galaz->lewy = NULL;
 
-    root->prawy = wezel;
+    root->prawy = &stat[i];
     root->lewy = galaz;
-    zaalokujTDrzewo(stat, i + 1, galaz);
+    zaalokujTDrzewo(stat, statSize, i + 1, galaz);
 }
 
 void uwolnijTDrzewo(TDrzewo *root) {
@@ -65,21 +83,21 @@ void uwolnijTDrzewo(TDrzewo *root) {
         return;
     }
     uwolnijTDrzewo(root->lewy);
-    uwolnijTDrzewo(root->prawy);
+    //uwolnijTDrzewo(root->prawy);
     free(root);
 }
 
 /**
  * Stworzenie drzewa wystapien uzywanego pozniej do kompresji/dekompresji na podstawie podanych statystyk
  */
-TDrzewo* stworzTDrzewo(int* stat) {
+TDrzewo* stworzTDrzewo(TDrzewo* stat, int statSize) {
     TDrzewo *root = malloc(sizeof(TDrzewo));
     root->wystapienia = 0;
     root->slowo = -1;
     root->prawy = NULL;
     root->lewy = NULL;
 
-    zaalokujTDrzewo(stat, 0, root);
+    zaalokujTDrzewo(stat, statSize, 0, root);
     return root;
 }
 
@@ -106,7 +124,7 @@ int writeByte(TDrzewo *root, FILE *out, int c, char* buffer, int bufferIndex, lo
         bufferIndex++;
         bufferIndex = writeByte(root->lewy, out, c, buffer, bufferIndex, compressedLen);
     } else {
-        printf("WARNING: not word found [%c]\n", c);
+        printf("WARNING: not word found [%c] value [%d]\n", c, c);
     }
     return bufferIndex;
 }
@@ -157,7 +175,7 @@ TDrzewo* readByte(TDrzewo *root, TDrzewo *aktualnyWezel, FILE *out, int c, long 
         // write next
         return aktualnyWezel->lewy;
     }
-    printf("WARNING: unknown state\n");
+    // at the end when byte was filled by 0 only
     return root;
 }
 
@@ -237,25 +255,25 @@ int main() {
     }
 
     int *stat = statystyki(statFile);
+    int statSize = 0;
+    TDrzewo *sortedStat = posortowaneWezly(stat, &statSize);
 
     fclose(statFile);
-    printf("Zebrane statystyki:");
-    for (int i = 0; i < 128; i++) {
-        if (stat[i] > 0) {
-            printf("[%c]x%d ", i, stat[i]);
-        }
+    printf("Zebrane statystyki %d znakow:", statSize);
+    for (int i = 0; i < statSize; i++) {
+        printf("[%c][%d]x%d ", sortedStat[i].slowo, sortedStat[i].slowo, sortedStat[i].wystapienia);
     }
     printf("\n");
 
 
     printf("Tworzenie drzewa\n");
-    TDrzewo *tdrzewo = stworzTDrzewo(stat);
+    TDrzewo *tdrzewo = stworzTDrzewo(sortedStat, statSize);
     free(stat);
 
 
     printf("Rozpoczecie kompresji\n");
     FILE *inputCompressionFile = fopen("test/podstawowy.txt", "r");
-    FILE *outputCompressionFile = fopen("podstawowy.bin", "w");
+    FILE *outputCompressionFile = fopen("podstawowy.bin", "wb");
     if (!inputCompressionFile || !outputCompressionFile) {
         printf("Problem z plikiem  in/out podczas kompresji\n");
         return 1;
@@ -269,7 +287,7 @@ int main() {
 
 
     printf("Rozpoczecie dekompresji\n");
-    FILE *inputDecompressionFile = fopen("podstawowy.bin", "r");
+    FILE *inputDecompressionFile = fopen("podstawowy.bin", "rb");
     FILE *outputDecompressionFile = fopen("podstawowy_out.txt", "w");
     if (!inputDecompressionFile || !outputDecompressionFile) {
         printf("Problem z plikiem  in/out podczas dekompresji\n");
@@ -281,6 +299,7 @@ int main() {
     fclose(inputDecompressionFile);
     fclose(outputDecompressionFile);
 
+    free(sortedStat);
     uwolnijTDrzewo(tdrzewo); // uwolnij pamiec
     printf("Zakonczenie dzialania.\n");
     return 0;
