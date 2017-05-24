@@ -3,6 +3,8 @@
 #include <string.h>
 #include <math.h>
 
+const int DEBUG = 1;
+
 /**
  * Struktura do drzewa Huffmana.
  */
@@ -33,8 +35,14 @@ int* statystyki(FILE *statFile) {
 void zaalokujTDrzewo(int* stat, int i, TDrzewo *root) {
     if (i >= 128) {
         return;
+    } else if (stat[i] == 0) { // don't allocate one that are not exists
+        zaalokujTDrzewo(stat, i + 1, root);
+        return;
     }
 
+    if (DEBUG) {
+        printf("allocating for word [%c]\n", i);
+    }
     TDrzewo *wezel = malloc(sizeof(TDrzewo));
     wezel->wystapienia = stat[i];
     wezel->slowo = i;
@@ -75,38 +83,118 @@ TDrzewo* stworzTDrzewo(int* stat) {
     return root;
 }
 
-void writeByte(TDrzewo *root, FILE *out, int c) {
+int writeByte(TDrzewo *root, FILE *out, int c, char* buffer, int bufferIndex, long *compressedLen) {
+    if (bufferIndex > 7) {
+        char i = (char) strtol(buffer, (char **)NULL, 2);
+        *compressedLen = *compressedLen+1;
+        if (DEBUG) {
+            printf("Compressing storing %ld char: [%d] byte: [%s]\n", *compressedLen, i, buffer);
+        }
+        fputc(i, out);
+        bufferIndex = 0;
+    }
     if (root->prawy && root->prawy->slowo == c) {
         // write 1
-        fputc('1', out);
+        if (DEBUG) {
+            printf("Compressing coding character [%c]\n", c);
+        }
+        buffer[7-bufferIndex] = '1';
+        bufferIndex++;
     } else if (root->lewy) {
         // write 0
-        fputc('0', out);
-        writeByte(root->lewy, out, c);
+        buffer[7-bufferIndex] = '0';
+        bufferIndex++;
+        bufferIndex = writeByte(root->lewy, out, c, buffer, bufferIndex, compressedLen);
+    } else {
+        printf("WARNING: not word found [%c]\n", c);
     }
+    return bufferIndex;
 }
 
 /**
  * Kompresuj ciag wejsciowy do binarnego wyjsciowego.
  */
-void kompresuj(TDrzewo *tdrzewo, FILE *in, FILE *out) {
+float kompresuj(TDrzewo *tdrzewo, FILE *in, FILE *out) {
     int c;
+    long originalLen = 0, compressedLen = 0;
+    char* buffer = calloc(8, sizeof(char));
+    int bufferIndex = 0;
     while ((c = getc(in)) != EOF) {
+        originalLen++;
         if (c >= 0 && c < 128) { // wspieraj tylko normalne znaki z zakresu ASCI
-            writeByte(tdrzewo, out, c);
+            bufferIndex = writeByte(tdrzewo, out, c, buffer, bufferIndex, &compressedLen);
         }
+    }
+    for (int i = bufferIndex; i <= 7; i++) {
+        buffer[7-i] = '0';
+    }
+    char i = (char) strtol(buffer, (char **)NULL, 2);
+    compressedLen = compressedLen+1;
+    if (DEBUG) {
+        printf("Compressing storing %ld char: [%d] byte: [%s]\n", compressedLen, i, buffer);
+        buffer[1] = '0'; // hotfix for waiting printf write buffer before free it from the memory
+    }
+    fputc(i, out);
+    free(buffer);
+
+    if (originalLen == 0 || compressedLen == 0) {
+        return 0.0;
+    } else {
+        return 100.0 * compressedLen / originalLen;
     }
 }
 
-TDrzewo* readByte(TDrzewo *root, TDrzewo *aktualnyWezel, FILE *out, int c) {
+TDrzewo* readByte(TDrzewo *root, TDrzewo *aktualnyWezel, FILE *out, int c, long *originalLen) {
+    if (!aktualnyWezel) {
+        return root;
+    }
     if ('1' == c) {
         // write slowo
+        *originalLen = *originalLen + 1;
         fputc(aktualnyWezel->prawy->slowo, out);
-    } else if (root->lewy) {
+        return root;
+    } else if ('0' == c && aktualnyWezel->lewy) {
         // write next
         return aktualnyWezel->lewy;
     }
+    printf("WARNING: unknown state\n");
     return root;
+}
+
+char* itoa(int value, char* result, int base) {
+    // check that the base if valid
+    if (base < 2 || base > 36) { *result = '\0'; return result; }
+
+    char* ptr = result, *ptr1 = result, tmp_char;
+    int tmp_value;
+
+    do {
+        tmp_value = value;
+        value /= base;
+        *ptr++ = "zyxwvutsrqponmlkjihgfedcba9876543210123456789abcdefghijklmnopqrstuvwxyz" [35 + (tmp_value - value * base)];
+    } while ( value );
+
+    // Apply negative sign
+    if (tmp_value < 0) *ptr++ = '-';
+    *ptr-- = '\0';
+    while(ptr1 < ptr) {
+        tmp_char = *ptr;
+        *ptr--= *ptr1;
+        *ptr1++ = tmp_char;
+    }
+    return result;
+}
+
+char *stringPadRight(char *buffer, char *tmp) {
+    int len = (int) strlen(tmp);
+    for (int i = 0; i < 8; i++) {
+        if (i < len) {
+            buffer[7 - i] = tmp[len - 1 - i];
+        } else {
+            buffer[7 - i] = '0';
+        }
+    }
+    return buffer;
 }
 
 /**
@@ -114,10 +202,24 @@ TDrzewo* readByte(TDrzewo *root, TDrzewo *aktualnyWezel, FILE *out, int c) {
  */
 void dekompresuj(TDrzewo *tdrzewo, FILE *in, FILE *out) {
     int c;
+    char* tmp = calloc(8, sizeof(char));
+    char* buffer = calloc(8, sizeof(char));
+    long originalLen = 0, compressedLen = 0;
+    int bufferIndex = 0;
     TDrzewo *aktualnyWezel = tdrzewo;
     while ((c = getc(in)) != EOF) {
-        aktualnyWezel = readByte(tdrzewo, aktualnyWezel, out, c);
+        compressedLen++;
+        itoa(c, tmp, 2);
+        stringPadRight(buffer, tmp);
+        if (DEBUG) {
+            printf("Decompressing: restoring %ld char:[%d] bytes:[%s]\n", compressedLen, c, buffer);
+        }
+        for (int i = 7; i >= 0; i--) {
+            aktualnyWezel = readByte(tdrzewo, aktualnyWezel, out, buffer[i], &originalLen);
+        }
     }
+    free(tmp);
+    free(buffer);
 }
 
 /**
@@ -130,7 +232,7 @@ int main() {
     printf("Zbieranie statystyk\n");
     FILE *statFile = fopen("test/podstawowy.txt", "r");
     if (!statFile) {
-        printf("Problem z plikiem statystyk\n");
+        printf("WARNING: Problem z plikiem statystyk\n");
         return 1;
     }
 
@@ -159,10 +261,11 @@ int main() {
         return 1;
     }
 
-    kompresuj(tdrzewo, inputCompressionFile, outputCompressionFile);
+    float ratio = kompresuj(tdrzewo, inputCompressionFile, outputCompressionFile);
 
     fclose(inputCompressionFile);
     fclose(outputCompressionFile);
+    printf("Zakonczenie kompresji wspolczynnik: %.2f %%\n", ratio);
 
 
     printf("Rozpoczecie dekompresji\n");
